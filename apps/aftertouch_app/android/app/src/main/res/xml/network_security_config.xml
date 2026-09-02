@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The SoundTouch speaker Web API is plain HTTP on :8090 and speakers are
+  reached by IP literal, so we permit cleartext by default. Android's
+  <domain-config> does not accept CIDR ranges, and the app only ever talks to
+  devices on the local network, so a permissive base-config is the pragmatic
+  choice. Revisit if any remote host is ever contacted directly.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

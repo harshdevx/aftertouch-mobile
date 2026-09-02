@@ -1,0 +1,29 @@
+name: aftertouch_app
+description: "AfterTouch — monochrome controller for Bose SoundTouch speakers on the LAN."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  soundtouch_client:
+    path: ../../packages/soundtouch_client
+
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  nsd: ^4.0.0
+  shared_preferences: ^2.3.3
+  cached_network_image: ^3.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

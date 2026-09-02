@@ -1,0 +1,9 @@
+**/specs
+**/packages
+**/.dart_tool
+**/analysis_options.yaml
+**/devtools_options.yaml
+
+**/pubspec.lock
+**/macos
+**/ios

@@ -1,0 +1,10 @@
+# Dart pub workspace root — no melos needed (Dart >= 3.6 native workspaces).
+name: aftertouch_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+workspace:
+  - packages/soundtouch_client
+  - apps/aftertouch_app
