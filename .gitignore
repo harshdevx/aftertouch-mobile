@@ -1,9 +1,59 @@
-**/specs
+# ── Repo scope ───────────────────────────────────────────────────────
+# This repo tracks the Flutter app's Dart + Android sources only. The
+# pure-Dart client package, the specs, the lockfile, and the generated
+# iOS/macOS runner folders are kept out of version control here. Delete
+# a line below if you want that path tracked.
 **/packages
-**/.dart_tool
+**/specs
+**/media
+**/ios
+**/macos
+**/pubspec.lock
 **/analysis_options.yaml
 **/devtools_options.yaml
 
-**/pubspec.lock
-**/macos
-**/ios
+# ── OS / editor junk ─────────────────────────────────────────────────
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ── Dart / Flutter ───────────────────────────────────────────────────
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+coverage/
+*.log
+doc/api/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/.flutter-plugins*
+**/generated_plugin_registrant.dart
+**/GeneratedPluginRegistrant.*
+**/Flutter/ephemeral/
+**/flutter_export_environment.sh
+
+# ── Android ──────────────────────────────────────────────────────────
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/key.properties
+**/.cxx/
+*.jks
+*.keystore
+
+# ── iOS / macOS build leftovers ──────────────────────────────────────
+# (the runner folders themselves are excluded under "Repo scope" above)
+**/Pods/
+**/.symlinks/
+**/xcuserdata/
+**/*.xcworkspace/xcuserdata/
+**/Flutter/App.framework
+**/Flutter/Flutter.framework
+**/Flutter/Flutter.podspec
+**/ServiceDefinitions.json

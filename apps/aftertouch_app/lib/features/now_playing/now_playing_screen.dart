@@ -55,6 +55,19 @@ class NowPlayingScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (!state.unreachable && !(np?.isStandby ?? false))
+            IconButton(
+              tooltip: 'Sleep',
+              icon: const Icon(Icons.power_settings_new),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await controller.power();
+                messenger
+                  ..clearSnackBars()
+                  ..showSnackBar(
+                      const SnackBar(content: Text('Sent to standby')));
+              },
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_horiz),
             onSelected: (choice) {

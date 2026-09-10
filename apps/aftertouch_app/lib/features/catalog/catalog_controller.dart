@@ -63,6 +63,42 @@ final catalogControllerProvider =
 class CatalogController extends Notifier<CatalogState> {
   AfterTouchClient? get _client => ref.read(afterTouchClientProvider);
 
+  /// speakerKey → the key the AfterTouch server has this speaker registered
+  /// under (often not the LAN IP we know it by).
+  final _serverKeyCache = <String, String>{};
+
+  static String _normId(String? s) =>
+      (s ?? '').toUpperCase().replaceAll(RegExp('[^0-9A-F]'), '');
+
+  /// Resolve which registry key the AfterTouch server expects for [speakerKey].
+  /// Matches on the speaker's Bose device id first (survives IP changes), then
+  /// on address. Triggers a server-side sweep once if the speaker is missing.
+  Future<String?> _serverDeviceKey(AfterTouchClient client, String speakerKey) async {
+    if (_serverKeyCache[speakerKey] case final cached?) return cached;
+
+    final host = speakerKey.split(':').first;
+    final wantId = _normId(ref.read(speakerHubProvider(speakerKey)).info?.deviceId);
+
+    String? match(List<AtServerDevice> devices) {
+      for (final d in devices) {
+        if (wantId.isNotEmpty && _normId(d.deviceId) == wantId) return d.key;
+      }
+      for (final d in devices) {
+        if (d.ip == host || d.key == host || d.key == speakerKey) return d.key;
+      }
+      return null;
+    }
+
+    var key = match(await client.serverDevices());
+    if (key == null) {
+      await client.triggerServerDiscovery();
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      key = match(await client.serverDevices());
+    }
+    if (key != null) _serverKeyCache[speakerKey] = key;
+    return key;
+  }
+
   @override
   CatalogState build() {
     Future.microtask(browseRoot);
@@ -153,11 +189,17 @@ class CatalogController extends Notifier<CatalogState> {
       return "That item can't be played.";
     }
     try {
+      final deviceKey = await _serverDeviceKey(client, speakerKey);
+      if (deviceKey == null) {
+        return 'Your AfterTouch server can’t see this speaker. It has to be on '
+            'the same network as the speaker — open the server’s web UI and run '
+            'discovery, then try again.';
+      }
       if (state.provider == CatalogProvider.tuneIn) {
-        await client.playTuneIn(speakerKey,
+        await client.playTuneIn(deviceKey,
             location: item.playLocation!, type: item.playType, name: item.name);
       } else {
-        await client.playRadioBrowser(speakerKey,
+        await client.playRadioBrowser(deviceKey,
             location: item.playLocation!, name: item.name);
       }
       await ref.read(speakerHubProvider(speakerKey).notifier).refreshSoon();

@@ -13,8 +13,9 @@ Bose cloud service.
 ## Features
 
 - **Discovery** — finds speakers on the LAN via mDNS / DNS-SD, with an
-  "Add by IP" fallback and a status panel that shows what the discovery layer
-  is seeing. Known speakers are remembered between launches.
+  "Add by IP" fallback. Duplicate hits for one speaker (a `.local` name and a
+  numeric IP) are merged into a single row; swipe a row away to remove it, with
+  one-tap undo. Known speakers are remembered between launches.
 - **Now Playing** — artwork (rendered greyscale), track metadata, scrubber,
   transport controls, shuffle / repeat, docked volume and mute. Live updates
   over the speaker's WebSocket event stream, with HTTP polling as a fallback.

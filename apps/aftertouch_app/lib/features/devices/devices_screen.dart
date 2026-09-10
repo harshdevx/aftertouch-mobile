@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:soundtouch_client/soundtouch_client.dart';
 
 import '../../design/app_ink.dart';
 import '../../design/app_spacing.dart';
@@ -45,36 +43,61 @@ class DevicesScreen extends ConsumerWidget {
           const SizedBox(width: Space.sm),
         ],
       ),
-      body: Column(
-        children: [
-          const _DiscoveryStatusStrip(),
-          Divider(height: 1, color: ink.ink100),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: controller.rescan,
-              color: ink.ink900,
-              backgroundColor: ink.paper,
-              child: state.isEmpty
-                  ? _Empty(scanning: state.scanning)
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                      itemCount:
-                          state.entries.length + (state.scanning ? 1 : 0),
-                      separatorBuilder: (_, _) => Divider(
-                        height: 1,
-                        color: ink.ink100,
-                        indent: Space.gutter + 32,
+      body: RefreshIndicator(
+        onRefresh: controller.rescan,
+        color: ink.ink900,
+        backgroundColor: ink.paper,
+        child: state.isEmpty
+            ? _Empty(scanning: state.scanning)
+            : ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                itemCount: state.entries.length + (state.scanning ? 1 : 0),
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  color: ink.ink100,
+                  indent: Space.gutter + 32,
+                ),
+                itemBuilder: (context, i) {
+                  if (i == state.entries.length) {
+                    return const _ScanningRow();
+                  }
+                  final entry = state.entries[i];
+                  return Dismissible(
+                    // Host-based key stays stable as the row enriches with
+                    // its MAC / now-playing info.
+                    key: ValueKey('row:${entry.speakerKey}'),
+                    direction: DismissDirection.endToStart,
+                    background: ColoredBox(
+                      color: ink.ink900,
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.only(right: Space.gutter),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'REMOVE',
+                            style:
+                                AppType.label.copyWith(color: ink.paper),
+                          ),
+                        ),
                       ),
-                      itemBuilder: (context, i) {
-                        if (i == state.entries.length) {
-                          return const _ScanningRow();
-                        }
-                        return _SpeakerRow(entry: state.entries[i]);
-                      },
                     ),
-            ),
-          ),
-        ],
+                    onDismissed: (_) {
+                      controller.remove(entry);
+                      ScaffoldMessenger.of(context)
+                        ..clearSnackBars()
+                        ..showSnackBar(SnackBar(
+                          content: Text('Removed ${entry.name}'),
+                          action: SnackBarAction(
+                            label: 'Undo',
+                            onPressed: controller.undoLastRemove,
+                          ),
+                        ));
+                    },
+                    child: _SpeakerRow(entry: entry),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -244,135 +267,12 @@ class _Empty extends StatelessWidget {
         const SizedBox(height: Space.sm),
         Text(
           'Make sure this device is on the same network as your speakers. '
-          'Some routers block discovery between wired and wireless.',
+          'Some routers block discovery between wired and wireless. '
+          'You can also add a speaker by its IP address.',
           textAlign: TextAlign.center,
           style: AppType.body.copyWith(color: ink.ink500),
         ),
       ],
-    );
-  }
-}
-
-/// Collapsible strip that shows whether discovery is actually working — so a
-/// "no speakers" result can be told apart from "the network is blocking mDNS".
-class _DiscoveryStatusStrip extends ConsumerStatefulWidget {
-  const _DiscoveryStatusStrip();
-
-  @override
-  ConsumerState<_DiscoveryStatusStrip> createState() => _StripState();
-}
-
-class _StripState extends ConsumerState<_DiscoveryStatusStrip> {
-  bool _open = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = context.ink;
-    final s = ref.watch(devicesControllerProvider);
-    final anyError = s.reports.values.any((r) => r.phase == DiscoveryPhase.error);
-    final found = s.entries.any((e) => e.reachable);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: () => setState(() => _open = !_open),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-                Space.gutter, Space.sm, Space.sm, Space.sm),
-            child: Row(
-              children: [
-                _dot(ink, found: found, error: anyError, scanning: s.scanning),
-                const SizedBox(width: Space.sm),
-                Expanded(
-                  child: Text(
-                    s.summaryLine.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.label.copyWith(color: ink.ink500),
-                  ),
-                ),
-                Icon(_open ? Icons.expand_less : Icons.expand_more,
-                    size: 18, color: ink.ink300),
-              ],
-            ),
-          ),
-        ),
-        if (_open) _Detail(state: s),
-      ],
-    );
-  }
-
-  Widget _dot(AppInk ink,
-      {required bool found, required bool error, required bool scanning}) {
-    final color = error
-        ? ink.ink900
-        : found
-            ? ink.ink900
-            : null;
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        border: color == null ? Border.all(color: ink.ink300, width: 1.5) : null,
-      ),
-    );
-  }
-}
-
-class _Detail extends StatelessWidget {
-  const _Detail({required this.state});
-  final DevicesState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = context.ink;
-
-    String line(String src) {
-      final r = state.reports[src];
-      if (r == null) return '${src.toUpperCase()}: not started';
-      final ago = DateTime.now().difference(r.at).inSeconds;
-      return '${src.toUpperCase()}: ${r.phase.name}'
-          '${r.detail != null ? " — ${r.detail}" : ""} '
-          '· seen ${r.seen} · speakers ${r.speakers} · ${ago}s ago';
-    }
-
-    final body = [
-      line('nsd'),
-      line('mdns'),
-      'This device: ${state.localIps.isEmpty ? "unknown" : state.localIps.join(", ")}',
-      'Saved speakers: ${state.knownHostCount}',
-    ].join('\n');
-
-    return Container(
-      width: double.infinity,
-      color: ink.paper2,
-      padding: const EdgeInsets.fromLTRB(
-          Space.gutter, Space.sm, Space.gutter, Space.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SelectableText(body, style: AppType.mono.copyWith(color: ink.ink700)),
-          const SizedBox(height: Space.xs),
-          Text(
-            'If NSD/mDNS keep browsing with 0 replies but "Add by IP" works, '
-            'your router is dropping multicast between this device and the '
-            'speaker (AP isolation / IoT VLAN / mesh).',
-            style: AppType.caption.copyWith(color: ink.ink500),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Copy'),
-              onPressed: () =>
-                  Clipboard.setData(ClipboardData(text: body)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
